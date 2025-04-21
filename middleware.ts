@@ -10,7 +10,6 @@ const publicRoutes = [
 ];
 
 export function middleware(request: NextRequest) {
-  console.log("Middleware triggered for path:", request.nextUrl.pathname);
   const isPublicRoute = publicRoutes.find(
     (route) => request.nextUrl.pathname === route.path
   );
@@ -19,7 +18,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("token")?.value;
+  const token = request.cookies.get("auth_token")?.value;
 
   if (!token) {
     const url = request.nextUrl.clone();
