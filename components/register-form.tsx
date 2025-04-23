@@ -12,6 +12,7 @@ import { useState } from "react";
 import { registerFormSchema } from "@/lib/inputs-validation";
 import { authenticateUser } from "@/app/api/repositories/auth";
 import { useRouter } from "next/navigation";
+import { handleAuthentication } from "@/lib/auth-utils";
 
 export function RegisterForm({
   className,
@@ -69,16 +70,17 @@ export function RegisterForm({
             formData.password
           );
 
-          if (!token) {
-            throw new Error("Authentication failed. No token received.");
+          try {
+            handleAuthentication(token, router);
+          } catch (error) {
+            console.error("Authentication error:", error);
+            setErrors({
+              form:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to authenticate. Please try again.",
+            });
           }
-
-          const expires = new Date();
-          expires.setDate(expires.getDate() + 7);
-
-          document.cookie = `auth_token=${token}; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-
-          router.push("/home");
         } catch (error) {
           console.error("Failed to register user:", error);
           setErrors({

@@ -15,6 +15,7 @@ import { useState } from "react";
 import { loginFormSchema } from "@/lib/inputs-validation";
 import { authenticateUser } from "@/app/api/repositories/auth";
 import { useRouter } from "next/navigation";
+import { handleAuthentication } from "@/lib/auth-utils";
 
 import Logo from "@/public/omnia.png";
 
@@ -61,18 +62,17 @@ export function LoginForm({
             formData.password
           );
 
-          if (!response.token) {
-            throw new Error("Authentication failed. No token received.");
+          try {
+            handleAuthentication(response.token, router);
+          } catch (error) {
+            console.error("Authentication error:", error);
+            setErrors({
+              form:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to authenticate. Please try again.",
+            });
           }
-
-          const expires = new Date();
-          expires.setDate(expires.getDate() + 7);
-
-          document.cookie = `auth_token=${
-            response.token
-          }; expires=${expires.toUTCString()}; path=/; SameSite=Strict`;
-
-          router.push("/home");
         } catch (error) {
           console.error("Failed to login:", error);
           setErrors({
