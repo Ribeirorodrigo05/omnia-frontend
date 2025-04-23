@@ -70,9 +70,9 @@ A validação é realizada através do esquema de validação Zod (`loginFormSch
 
 O componente lida com três tipos de erros:
 
-1. **Erros de validação específicos do campo**: Exibidos abaixo dos respectivos campos de entrada
-2. **Erros de autenticação**: Exibidos como erros em nível de formulário
-3. **Erros inesperados**: Registrados no console e exibidos como erros genéricos de formulário
+1. **Erros de validação específicos do campo**: Exibidos abaixo dos respectivos campos de entrada.
+2. **Erros de autenticação**: Exibidos como erros em nível de formulário.
+3. **Erros inesperados**: Registrados no console e exibidos como erros genéricos de formulário.
 
 ## Recursos de UI/UX
 
