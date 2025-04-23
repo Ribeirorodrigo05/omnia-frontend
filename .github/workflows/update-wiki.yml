@@ -29,11 +29,11 @@ jobs:
 
       - name: Copy Documentation Files
         run: |
-          cp -r docs/* ${REPO_NAME}.wiki/
+          cp -r docs/* "${REPO_NAME}.wiki/"
 
       - name: Push to Wiki
-        working-directory: ${REPO_NAME}.wiki
         run: |
+          cd "${REPO_NAME}.wiki"
           git add .
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update wiki from docs"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
