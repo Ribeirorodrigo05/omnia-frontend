@@ -18,19 +18,21 @@ jobs:
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"      - name: Clone Wiki
-          git clone https://github.com/${{ github.repository }}.wiki.git
+          git config --global user.email "github-actions@github.com"
+
+      - name: Clone Wiki
+        run: git clone https://github.com/${{ github.repository }}.wiki.git
 
       - name: Set Repository Name
         id: repo-name
-        run: echo "REPO_NAME=$(echo ${{ github.repository }} | cut -d '/' -f 2)" >> $GITHUB_OUTPUT
+        run: echo "REPO_NAME=$(echo ${{ github.repository }} | cut -d '/' -f 2)" >> $GITHUB_ENV
 
       - name: Copy Documentation Files
         run: |
-          cp -r docs/* ${{ steps.repo-name.outputs.REPO_NAME }}.wiki/
+          cp -r docs/* ${REPO_NAME}.wiki/
 
       - name: Push to Wiki
-        working-directory: ${{ steps.repo-name.outputs.REPO_NAME }}.wiki
+        working-directory: ${REPO_NAME}.wiki
         run: |
           git add .
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update wiki from docs"
