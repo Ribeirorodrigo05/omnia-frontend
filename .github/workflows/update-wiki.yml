@@ -3,7 +3,7 @@ name: Update Wiki
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - "docs/**"
 
