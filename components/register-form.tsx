@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,10 @@ import { createUser } from "@/app/api/repositories/user";
 import Logo from "@/public/omnia.png";
 import Image from "next/image";
 import { useState } from "react";
-import { registerFormSchema } from "@/lib/inputs-validation";
+import { registerFormSchema } from "@/app/lib/inputs-validation";
 import { authenticateUser } from "@/app/api/repositories/auth";
 import { useRouter } from "next/navigation";
-import { handleAuthentication } from "@/lib/auth-utils";
+import { handleAuthentication } from "@/app/lib/auth-utils";
 
 export function RegisterForm({
   className,

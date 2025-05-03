@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,38 +12,93 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { loginFormSchema } from "@/lib/inputs-validation";
+import { loginFormSchema, LoginFormData } from "@/app/lib/inputs-validation";
 import { authenticateUser } from "@/app/api/repositories/auth";
 import { useRouter } from "next/navigation";
-import { handleAuthentication } from "@/lib/auth-utils";
+import { handleAuthentication } from "@/app/lib/auth-utils";
+import { ZodError } from "zod";
 
 import Logo from "@/public/omnia.png";
-
 import Image from "next/image";
+import { jwtDecode } from "jwt-decode";
+import { setUserAtom } from "@/atoms/user";
+import { useAtom } from "jotai";
+
+function formatValidationErrors(
+  error: ZodError<LoginFormData>
+): Record<string, string> {
+  return error.errors.reduce((acc: Record<string, string>, curr) => {
+    const path = curr.path[0];
+    if (path) {
+      acc[path.toString()] = curr.message;
+    }
+    return acc;
+  }, {});
+}
+
+function setFormError(
+  error: unknown,
+  setErrorsState: React.Dispatch<
+    React.SetStateAction<Partial<LoginFormData> & { form?: string }>
+  >,
+  contextMessage: string
+): void {
+  console.error(contextMessage, error);
+  const message = error instanceof Error ? error.message : contextMessage;
+  setErrorsState({ form: message });
+}
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [formData, setFormData] = useState({
+  const router = useRouter();
+  const [, setUser] = useAtom(setUserAtom);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
   });
-
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{
-    email?: string;
-    password?: string;
-    form?: string;
-  }>({});
+  const [errors, setErrors] = useState<
+    Partial<LoginFormData> & { form?: string }
+  >({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
 
     if (errors[id as keyof typeof errors]) {
-      setErrors((prev) => ({ ...prev, [id]: undefined }));
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[id as keyof typeof errors];
+
+        if (!Object.keys(newErrors).some((key) => key !== "form")) {
+          delete newErrors.form;
+        }
+        return newErrors;
+      });
+    }
+  };
+
+  const performLogin = async () => {
+    try {
+      const { token } = await authenticateUser(
+        formData.email,
+        formData.password
+      );
+
+      await Promise.all([
+        handleAuthentication(token),
+        saveUserDataInGlobalState(token),
+      ]);
+
+      router.push("/home");
+    } catch (error) {
+      setFormError(
+        error,
+        setErrors,
+        "Falha no processo de login ou autenticação."
+      );
     }
   };
 
@@ -51,55 +106,29 @@ export function LoginForm({
     e.preventDefault();
     setErrors({});
 
-    try {
-      const result = loginFormSchema.safeParse(formData);
+    const validationResult = loginFormSchema.safeParse(formData);
 
-      if (result.success) {
-        setIsSubmitting(true);
-        try {
-          const response = await authenticateUser(
-            formData.email,
-            formData.password
-          );
-
-          try {
-            handleAuthentication(response.token, router);
-          } catch (error) {
-            console.error("Authentication error:", error);
-            setErrors({
-              form:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to authenticate. Please try again.",
-            });
-          }
-        } catch (error) {
-          console.error("Failed to login:", error);
-          setErrors({
-            form:
-              error instanceof Error
-                ? error.message
-                : "Failed to login. Please check your credentials and try again.",
-          });
-        } finally {
-          setIsSubmitting(false);
-        }
-      } else {
-        const formattedErrors = result.error.errors.reduce(
-          (acc: Record<string, string>, curr) => {
-            if (curr.path[0]) {
-              acc[curr.path[0] as string] = curr.message;
-            }
-            return acc;
-          },
-          {}
-        );
-        setErrors(formattedErrors);
-      }
-    } catch (error) {
-      setErrors({ form: "An unexpected error occurred" });
-      console.error("Form validation error:", error);
+    if (!validationResult.success) {
+      setErrors(formatValidationErrors(validationResult.error));
+      return;
     }
+
+    setIsSubmitting(true);
+    try {
+      await performLogin();
+    } catch (error) {
+      setFormError(error, setErrors, "Erro inesperado durante a submissão.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const saveUserDataInGlobalState = (token: string) => {
+    const userData: { id: string; role: string } = jwtDecode(token);
+    if (!userData)
+      setErrors({ form: "Failed to decode user data from token." });
+
+    setUser({ id: userData.id, role: userData.role });
   };
 
   return (
@@ -132,11 +161,16 @@ export function LoginForm({
                   value={formData.email}
                   onChange={handleChange}
                   className={errors.email ? "border-red-500" : ""}
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email}</p>
+                  <p id="email-error" className="text-red-500 text-sm">
+                    {errors.email}
+                  </p>
                 )}
               </div>
+
               <div className="grid gap-3">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
@@ -153,16 +187,24 @@ export function LoginForm({
                   value={formData.password}
                   onChange={handleChange}
                   className={errors.password ? "border-red-500" : ""}
+                  aria-invalid={!!errors.password}
+                  aria-describedby={
+                    errors.password ? "password-error" : undefined
+                  }
                 />
                 {errors.password && (
-                  <p className="text-red-500 text-sm">{errors.password}</p>
+                  <p id="password-error" className="text-red-500 text-sm">
+                    {errors.password}
+                  </p>
                 )}
               </div>
+
               {errors.form && (
                 <p className="text-red-500 text-sm text-center">
                   {errors.form}
                 </p>
               )}
+
               <div className="flex flex-col gap-3">
                 <Button
                   type="submit"
@@ -181,6 +223,7 @@ export function LoginForm({
                 </Button>
               </div>
             </div>
+
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <a href="/sign-up" className="underline underline-offset-4">

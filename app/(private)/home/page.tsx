@@ -1,8 +1,8 @@
+"use client";
+import { userAtom } from "@/atoms/user";
+import { useAtom } from "jotai";
+
 export default function HomePage() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-4xl font-bold">Welcome to the Home Page</h1>
-      <p className="mt-4 text-lg">This is a simple Next.js application.</p>
-    </div>
-  );
+  const [user] = useAtom(userAtom);
+  return <div>{JSON.stringify(user)}</div>;
 }
